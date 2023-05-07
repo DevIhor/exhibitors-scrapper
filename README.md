@@ -7,6 +7,7 @@ A tiny scrapper of techspodenver.com with feature to search for more data about 
 ```bash
 pip install -r requirements.txt
 ```
+- Set environment variables in .env file
 - Run scrapper:
 ```bash
 python main.py

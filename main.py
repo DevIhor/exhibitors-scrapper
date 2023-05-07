@@ -1,58 +1,71 @@
-import csv
-import nltk
-import urllib3
-from bs4 import BeautifulSoup
-from nltk import ne_chunk, pos_tag, word_tokenize
-from nltk.tree import Tree
+import time
+from typing import Iterator, Dict
 
-try:
-	nltk.data.find('tokenizers/punkt')
-except LookupError:
-	nltk.download('punkt')
-try:
-	nltk.data.find('taggers/averaged_perceptron_tagger')
-except LookupError:
-	nltk.download('averaged_perceptron_tagger')
-try:
-	nltk.data.find('chunkers/maxent_ne_chunker')
-except LookupError:
-	nltk.download('maxent_ne_chunker')
-try:
-	nltk.data.find('corpora/words')
-except LookupError:
-	nltk.download('words')
+import core.settings
+from core import write_data, prepare_writer
+from core.chatgpt import get_chatgpt_response
+from core.google import search as google_search
+
+from core.nlp import extract_names, gen_decision_maker_request, get_linkedin_search_request, \
+	get_alternative_search_request
+from scrappers.techspodenver import scrape as scrape_techspodenver
 
 
-def extract_names(text):
-	results = []
-	nltk_results = ne_chunk(pos_tag(word_tokenize(text)))
-	for nltk_result in nltk_results:
-		if type(nltk_result) == Tree:
-			name = ''
-			for nltk_result_leaf in nltk_result.leaves():
-				name += nltk_result_leaf[0] + ' '
-			if nltk_result.label() == "PERSON":
-				results.append(name)
-	return results
+def extract_exhibitors_data() -> Iterator[Dict[str, str]]:
+	data = scrape_techspodenver()
+	print("[INFO] Data were scraped!")
+	for entry in data:
+		if not entry['site']:
+			continue
+		item = {
+			'company': entry['company'],
+			'site': entry['site'],
+			'description': entry['description'],
+			'decision_maker': '',
+			'person_role': '',
+			'person_linkedin': ''
+		}
+		for request, role in gen_decision_maker_request(entry['site']):
+			# Find more info about company
+			if core.settings.USE_CHAT_GPT:
+				response = get_chatgpt_response(request)
+				print("[INFO] Request to ChatGPT was made!")
+				# OpenAI allows to make not more than 3 requests per minute
+				time.sleep(21)
+			else:
+				response = google_search(get_alternative_search_request(item['company'], role))[0]['snippet']
 
+			# Get decision-maker name
+			try:
+				name = extract_names(response)[0]
+			except IndexError:
+				name = ''
+			if (name.lower() in item['company'].lower()) or len(name.split()) < 2:
+				name = ''
+			if not name:
+				continue
+			print("[INFO] Name was extracted!")
 
-def scrape_techspodenver():
-	response = urllib3.request("GET", "https://techspodenver.com/exhibitors/")
-	soup = BeautifulSoup(response.data, features="html.parser")
-	exhibitors = soup.find("table", {"class": "exhi"}).find_all("tr")
-	with open('exhibitors.csv', mode='w') as exhibitors_file:
-		fieldnames = ['company', 'site', 'description']
-		writer = csv.DictWriter(exhibitors_file, fieldnames=fieldnames)
-		writer.writeheader()
-		for item in exhibitors:
-			writer.writerow({
-				'company': item.find("p").find("a").text,
-				'site': item.find("p").find("a")["href"],
-				'description': item.find("p").text,
-			})
+			# Get LinkedIn url
+			item['decision_maker'], item['person_role'] = name, role
+			search_request = get_linkedin_search_request(item['decision_maker'], entry['company'])
+			profile_link = google_search(search_request)[0]['link']
+			if 'linkedin' in profile_link and any([i.lower() in profile_link for i in name.split()]):
+				item['person_linkedin'] = profile_link
+			break
+		yield item
+
 
 if __name__ == "__main__":
-	a = "The Academy of VR is an online learning platform that offers courses on virtual reality and related technologies. As a language model, I don't have access to current information on the specific individuals or team members who are responsible for making decisions at the Academy of VR. However, based on publicly available information, it appears that the Academy of VR was founded by Eddie Avil, who serves as the CEO of the company. Other team members listed on their website include educators, designers, and developers who contribute to creating and delivering the courses offered by the Academy of VR."
-	print(extract_names(a))
-	scrape_techspodenver()
+	prepare_writer()
+	exhibitor_extractor = extract_exhibitors_data()
+	index = 1
 
+	try:
+		while True:
+			exhibitor = next(exhibitor_extractor)
+			write_data(exhibitor)
+			print(f"[SUCCESS] №{index}: {exhibitor['company']} was successfully processed!")
+			index += 1
+	except StopIteration:
+		...
