@@ -1,15 +1,23 @@
 # exhibitors-scrapper
 A tiny scrapper of techspodenver.com with feature to search for more data about companies, using ChatGPT
 
-### How to prepare environment and run:
+## Architecture
+![architecture](.docs/FlowDiagram.png)
+
+## Setup and Run
+
+### Setup
 - Install Python 3.8 or later
 - Install project dependencies:
 ```bash
 pip install -r requirements.txt
 ```
+
+### Run
 - Set environment variables in .env file
 - Run scrapper:
 ```bash
 python main.py
 ```
-- Import exhibitors.csv file in Google Spreadsheet
+
+After getting results, you can import exhibitors.csv file in Google Spreadsheet

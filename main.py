@@ -14,9 +14,11 @@ from scrappers.techspodenver import scrape as scrape_techspodenver
 def extract_exhibitors_data() -> Iterator[Dict[str, str]]:
 	data = scrape_techspodenver()
 	print("[INFO] Data were scraped!")
+
 	for entry in data:
 		if not entry['site']:
 			continue
+
 		item = {
 			'company': entry['company'],
 			'site': entry['site'],
@@ -25,25 +27,38 @@ def extract_exhibitors_data() -> Iterator[Dict[str, str]]:
 			'person_role': '',
 			'person_linkedin': ''
 		}
+
 		for request, role in gen_decision_maker_request(entry['site']):
+			name = ''
+
 			# Find more info about company
 			if core.settings.USE_CHAT_GPT:
 				response = get_chatgpt_response(request)
 				print("[INFO] Request to ChatGPT was made!")
+
 				# OpenAI allows to make not more than 3 requests per minute
 				time.sleep(21)
-			else:
+
+				# Get decision-maker name
+				try:
+					name = extract_names(response)[0]
+				except IndexError:
+					name = ''
+				if (name.lower() in item['company'].lower()) or len(name.split()) < 2:
+					name = ''
+			if not name:
 				response = google_search(get_alternative_search_request(item['company'], role))[0]['snippet']
 
-			# Get decision-maker name
-			try:
-				name = extract_names(response)[0]
-			except IndexError:
-				name = ''
-			if (name.lower() in item['company'].lower()) or len(name.split()) < 2:
-				name = ''
-			if not name:
-				continue
+				# Get decision-maker name
+				try:
+					name = extract_names(response)[0]
+				except IndexError:
+					name = ''
+				if (name.lower() in item['company'].lower()) or len(name.split()) < 2:
+					name = ''
+				if not name:
+					continue
+
 			print("[INFO] Name was extracted!")
 
 			# Get LinkedIn url

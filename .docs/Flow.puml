@@ -1,0 +1,21 @@
+@startuml C4_Elements
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title System Flow Diagram
+
+Person(user, "User")
+System(scrapper, "Scrapper", "Scrapes data \nfrom site \n(www.techspodenver.com)")
+Container(chatgpt, "ChatGPT", "Looks for data \n about company")
+System(nlp, "NLP", "Extracts name \nfrom text")
+Container(google, "Google Search", "Looks for data \n about company")
+Container(google_linker, "Google Search", "Looks for \nLinkedIn urls")
+System(writer, "Writer", "Writes results to file")
+
+Rel_R(user, scrapper, "")
+Rel(scrapper, chatgpt, "")
+Rel_R(scrapper, google, "")
+Rel_R(chatgpt, nlp, "")
+Rel(google, nlp, "")
+Rel_R(nlp, google_linker, "")
+Rel_R(google_linker, writer, "")
+@enduml
