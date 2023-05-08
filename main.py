@@ -2,7 +2,7 @@ import time
 from typing import Iterator, Dict
 
 import core.settings
-from core import write_data, prepare_writer
+from core import write_data, prepare_writer, get_companies
 from core.chatgpt import get_chatgpt_response
 from core.google import search as google_search
 
@@ -15,8 +15,10 @@ def extract_exhibitors_data() -> Iterator[Dict[str, str]]:
 	data = scrape_techspodenver()
 	print("[INFO] Data were scraped!")
 
+	companies = get_companies()
+
 	for entry in data:
-		if not entry['site']:
+		if not entry['site'] or entry['company'] in companies:
 			continue
 
 		item = {
@@ -31,13 +33,14 @@ def extract_exhibitors_data() -> Iterator[Dict[str, str]]:
 		for request, role in gen_decision_maker_request(entry['site']):
 			name = ''
 
-			# Find more info about company
+			# Find more info about company using ChatGPT
 			if core.settings.USE_CHAT_GPT:
 				response = get_chatgpt_response(request)
 				print("[INFO] Request to ChatGPT was made!")
 
-				# OpenAI allows to make not more than 3 requests per minute
-				time.sleep(21)
+				if core.settings.USE_FREE_CHAT_GPT:
+					# OpenAI allows to make not more than 3 requests per minute
+					time.sleep(21)
 
 				# Get decision-maker name
 				try:
@@ -46,8 +49,12 @@ def extract_exhibitors_data() -> Iterator[Dict[str, str]]:
 					name = ''
 				if (name.lower() in item['company'].lower()) or len(name.split()) < 2:
 					name = ''
+
+			# Find more info about company using Google Search
 			if not name:
-				response = google_search(get_alternative_search_request(item['company'], role))[0]['snippet']
+				response = google_search(get_alternative_search_request(item['company'], role))
+				if response:
+					response = str(response[0]['snippet'])
 
 				# Get decision-maker name
 				try:

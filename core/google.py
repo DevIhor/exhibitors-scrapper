@@ -16,6 +16,7 @@ def search(
     service = build("customsearch", "v1", developerKey=GOOGLE_API_KEY)
     try:
         res = service.cse().list(q=search_term, cx=GOOGLE_CSE_ID, num=number, **kwargs).execute()
-    except googleapiclient.errors.HttpError:
+    except googleapiclient.errors.HttpError as e:
+        print(f"[WARNING] Google Search API couldn't return results! (reason: {e})")
         res = {'items': []}
     return res['items']
