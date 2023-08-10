@@ -23,7 +23,11 @@ pip install pipenv
 ```bash
 pipenv install
 ```
-3. Run the project using Pipenv: 
+3. Install the development packages using Pipenv: 
+```bash
+pipenv install --dev
+```
+4. Run the project using Pipenv: 
 ```bash
 pipenv run python main.py
 ```
