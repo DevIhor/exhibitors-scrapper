@@ -20,7 +20,7 @@ try:
 except LookupError:
     nltk.download('words')
 
-DECISION_MAKER_ROLES = ["CEO", "COO", "CTO", "CMO", "CFO"]
+DECISION_MAKER_ROLES = ["CEO", "COO", "CTO", "CMO", "CFO", "CIO"]
 
 
 def extract_names(
