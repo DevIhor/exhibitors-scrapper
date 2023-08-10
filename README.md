@@ -21,7 +21,7 @@ pip install pipenv
 ```
 2. Navigate to the project's directory and install the dependencies using Pipenv: 
 ```bash
-pipenv install
+pipenv sync
 ```
 3. Install the development packages using Pipenv: 
 ```bash
